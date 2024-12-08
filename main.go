@@ -37,7 +37,7 @@ func exifCreateDate(path string) time.Time {
 	if t, err := time.Parse("2006:01:02 15:04:05-07:00", timeStr); err == nil {
 		return t
 	}
-	log.Fatalf("unrecognized timeStr: %q", timeStr)
+	log.Fatalf("unrecognized timeStr (%s): %q", path, timeStr)
 	return time.Time{}
 }
 
@@ -83,6 +83,8 @@ func readFiles(in chan *walkDirFuncArgs) chan *file {
 					".jpg",
 					".mov",
 					".mp4",
+					".orf",
+					".ori",
 					".rw2":
 					isMedia = true
 					t = exifCreateDate(args.path)
@@ -146,6 +148,10 @@ func main() {
 		*dst = "/tank/photos/keisuke/Pictures/GX1S"
 	case "gx1b":
 		*dst = "/tank/photos/keisuke/Pictures/GX1B"
+	case "em10":
+		*dst = "/tank/photos/keisuke/Pictures/EM10"
+	case "em5iii":
+		*dst = "/tank/photos/keisuke/Pictures/EM5III"
 	}
 	if *src == "" || *dst == "" {
 		log.Fatal("invalid arguments")
@@ -171,12 +177,17 @@ func main() {
 	fmt.Printf("metadata: %d/%d (%f%%)\n", metadataBytes, totalBytes, float64(metadataBytes)/float64(totalBytes)*100)
 	fmt.Println(metadata)
 
-	cmd := exec.Command("rsync", "-Pav", filepath.Clean(*src)+"/", filepath.Join(*dst, lo.Format("20060102")+"_"+hi.Format("20060102"))+"/")
+	dstDated := filepath.Join(*dst, lo.Format("20060102")+"_"+hi.Format("20060102")) + "/"
+	cmd := exec.Command("rsync", "-Pav", filepath.Clean(*src)+"/", dstDated)
 	fmt.Printf("Running the command (y/n): %s\n> ", cmd.String())
 	var input string
-	fmt.Scanf("%s", input)
+	fmt.Scanf("%s", &input)
+	fmt.Println(input)
 	if input != "y" {
 		return
+	}
+	if err := os.MkdirAll(dstDated, 0775); err != nil {
+		log.Fatal(err)
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
